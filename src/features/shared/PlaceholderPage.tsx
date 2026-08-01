@@ -1,0 +1,2 @@
+import { EmptyState, PageHeader } from '../../components/ui';
+export function PlaceholderPage({ title, description }: { title: string; description: string }) { return <><PageHeader eyebrow="Module SAV" title={title} description={description}/><div className="card"><EmptyState title="Module prêt à être connecté" message="Cette fondation ne contient volontairement aucune donnée métier de démonstration. La prochaine phase branchera les services Supabase."/></div></>; }
