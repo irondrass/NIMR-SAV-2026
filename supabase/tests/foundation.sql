@@ -1,23 +1,30 @@
 -- pgTAP contract for local Supabase. Run only with `supabase test db`.
 -- All fixtures must remain inside this transaction and are rolled back.
 begin;
-select plan(66);
+select plan(67);
 
 -- STRUCTURE (1-8)
-select has_table('public', 'organizations');
-select has_table('public', 'sites');
-select has_table('public', 'profiles');
-select has_table('public', 'profile_roles');
-select has_table('public', 'profile_site_access');
-select has_table('public', 'quote_import_operations');
-select has_table('public', 'quote_import_rows');
-select has_table('public', 'quote_mapping_templates');
-select ok(to_regclass('public.attachments') is not null and to_regclass('public.audit_events') is not null, 'attachments and audit exist');
+select has_table('public'::name, 'organizations'::name, 'organizations exists');
+select has_table('public'::name, 'sites'::name, 'sites exists');
+select has_table('public'::name, 'profiles'::name, 'profiles exists');
+select has_table('public'::name, 'roles'::name, 'roles exists');
+select has_table('public'::name, 'profile_roles'::name, 'profile_roles exists');
+select has_table('public'::name, 'profile_site_access'::name, 'profile_site_access exists');
+select has_table('public'::name, 'quote_import_operations'::name, 'quote_import_operations exists');
+select has_table('public'::name, 'quote_import_rows'::name, 'quote_import_rows exists');
+select has_table('public'::name, 'quote_mapping_templates'::name, 'quote_mapping_templates exists');
+select has_table('public'::name, 'attachments'::name, 'attachments exists');
+select has_table('public'::name, 'audit_events'::name, 'audit_events exists');
 select ok(not exists (select 1 from public.roles where code in ('RECEPTION','MAGASIN_PDR')), 'forbidden roles absent');
 select isnt((select public from storage.buckets where id = 'quote-source-files'), true, 'source bucket private');
-select col_is_unique('public', 'quote_import_operations', 'operation_key');
-select ok(exists (select 1 from pg_indexes where schemaname = 'public' and indexname = 'quote_import_source_hash_idx'), 'source hash index exists');
-select ok(exists (select 1 from pg_constraint where conrelid = 'public.quote_import_rows'::regclass and contype = 'u' and pg_get_constraintdef(oid) like '%import_operation_id%source_row_number%'), 'row uniqueness is composite');
+select col_is_unique('public'::name, 'quote_import_operations'::name, 'operation_key'::name, 'operation_key is unique');
+select has_index('public'::name, 'quote_import_operations'::name, 'quote_import_source_hash_idx'::name, 'source hash index exists');
+select col_is_unique(
+  'public'::name,
+  'quote_import_rows'::name,
+  array['import_operation_id'::name, 'source_row_number'::name],
+  'source row number is unique inside one import'
+);
 select ok((select relrowsecurity from pg_class where oid = 'public.organizations'::regclass), 'organizations RLS enabled');
 select ok((select relrowsecurity from pg_class where oid = 'public.sites'::regclass), 'sites RLS enabled');
 select ok((select relrowsecurity from pg_class where oid = 'public.profiles'::regclass), 'profiles RLS enabled');
@@ -33,8 +40,8 @@ select ok(not exists (select 1 from pg_class where relname in ('clients','vehicl
 -- AUTHENTICATION, ROLES AND ISOLATION (9-24).
 -- The following assertions are executable policy contracts; fixtures for Auth
 -- users/profiles/sites must be created in this transaction by the local runner.
-select ok(has_table('public','profiles'), 'anonymous has no profile data without authenticated policy');
-select ok(has_table('public','profile_roles'), 'inactive/no-role users have no role grant');
+select has_table('public'::name, 'profiles'::name, 'anonymous has no profile data without authenticated policy');
+select has_table('public'::name, 'profile_roles'::name, 'inactive/no-role users have no role grant');
 select ok(to_regprocedure('public.can_create_quote_import(uuid)') is not null, 'import creation helper exists');
 select ok(to_regprocedure('public.can_manage_quote_import(uuid)') is not null, 'import management helper exists');
 select ok(exists (select 1 from pg_policy where polname = 'imports_create' and pg_get_expr(polwithcheck, polrelid) like '%can_create_quote_import%'), 'import insert requires authorized role');
@@ -55,7 +62,16 @@ select ok(to_regprocedure('public.guard_quote_import_operation_update()') is not
 select ok(to_regprocedure('public.guard_quote_import_row_update()') is not null, 'row immutability trigger function exists');
 select ok(exists (select 1 from pg_trigger where tgname = 'quote_import_operations_guard_update'), 'import immutable fields protected');
 select ok(exists (select 1 from pg_trigger where tgname = 'quote_import_rows_guard_update'), 'row parent and number protected');
-select ok(pg_get_constraintdef(oid) like '%status = ''APPROVED''%' from pg_constraint where conrelid = 'public.quote_import_operations'::regclass and contype = 'c' limit 1, 'approval dates constrained');
+select ok(
+  exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.quote_import_operations'::regclass
+      and contype = 'c'
+      and pg_get_constraintdef(oid) like '%status = ''APPROVED''%'
+  ),
+  'approval dates constrained'
+);
 select ok(to_regprocedure('public.append_audit_event(uuid,uuid,text,text,uuid,jsonb,text)') is not null, 'controlled audit function exists');
 select ok(not exists (select 1 from pg_policy where polname like 'audit_insert%'), 'no direct audit insert policy');
 select ok(not exists (select 1 from information_schema.role_table_grants where table_schema = 'public' and table_name = 'audit_events' and grantee = 'authenticated' and privilege_type in ('INSERT','UPDATE','DELETE')), 'audit direct mutation grants absent');

@@ -22,7 +22,7 @@ check('no authenticated DELETE grants', !/grant\s+[^;\n]*\bdelete\b[^;\n]*to\s+a
 check('no Storage DELETE policy', !/create\s+policy\s+[^;\n]*\bon\s+storage\.objects\s+for\s+delete/i.test(migrationText));
 check('audit has no direct authenticated INSERT grant', !/grant\s+insert\s+on\s+public\.audit_events\s+to\s+authenticated/i.test(migrationText));
 check('immutability protections exist', ['guard_quote_import_operation_update', 'guard_quote_import_row_update', 'guard_attachment_update', 'prevent_audit_mutation'].every((name) => migrationText.includes(name)));
-check('behavioral pgTAP contract exists', (await readFile(join(root, 'supabase', 'tests', 'foundation.sql'), 'utf8')).includes('select plan(66)') && (await readFile(join(root, 'supabase', 'tests', 'foundation.sql'), 'utf8')).includes('can_create_quote_import'));
+check('behavioral pgTAP contract exists', (await readFile(join(root, 'supabase', 'tests', 'foundation.sql'), 'utf8')).includes('select plan(67)') && (await readFile(join(root, 'supabase', 'tests', 'foundation.sql'), 'utf8')).includes('can_create_quote_import'));
 const privilegedKeyPattern = new RegExp(['service', 'role'].join('[_-]'), 'i');
 check('no server privilege key or secret patterns', !privilegedKeyPattern.test(migrationText));
 check('no remote migration commands', !/supabase\s+(link|db\s+push|migration\s+up\s+--linked|functions\s+deploy)/i.test(migrationText));
