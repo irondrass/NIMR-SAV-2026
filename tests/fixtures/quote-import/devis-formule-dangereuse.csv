@@ -1,0 +1,2 @@
+reference devis,designation,qte,montant
+DV-007,=CMD("calc"),1,10

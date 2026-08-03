@@ -1,6 +1,6 @@
 # Architecture
 
-Frontend React 18 + TypeScript strict + Vite + Tailwind CSS. `main.tsx` compose uniquement les providers, le routeur et l’Error Boundary. La logique d’interface est répartie dans `layouts`, `components` et `features`, dont `quote-import` est le seul point de création future d’un dossier.
+Frontend React 18 + TypeScript strict + Vite + Tailwind CSS. `main.tsx` compose uniquement les providers, le routeur et l’Error Boundary. La logique d’interface est répartie dans `layouts`, `components` et `features`. `QuoteImportPage` orchestre le workflow ; le parsing, mapping, normalisation, validation et brouillons vivent dans des fonctions pures testables.
 
 La source de vérité métier sera Supabase/PostgreSQL. `src/lib/supabase.ts` expose un client nul lorsque les variables ne sont pas présentes; aucun fallback local ou backend fictif n’existe. L’authentification est représentée par un provider abstrait destiné à être relié à Supabase Auth.
 

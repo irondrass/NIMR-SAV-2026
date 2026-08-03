@@ -1,0 +1,36 @@
+export const QUOTE_STATUSES = ['FILE_SELECTED','HASHING','PARSING','MAPPING_REQUIRED','READY_FOR_REVIEW','VALIDATION_ERROR','APPROVED_LOCALLY','SERVER_CONFIRMATION_REQUIRED','REJECTED'] as const;
+export type QuoteImportStatus = typeof QUOTE_STATUSES[number];
+export type QuoteFormat = 'CSV_UTF8' | 'XLSX_FUTURE' | 'PDF_FUTURE' | 'ERP_EXPORT_FUTURE';
+export type QuoteDelimiter = ',' | ';';
+export type QuoteImportIssueSeverity = 'INFO' | 'WARNING' | 'ERROR' | 'BLOCKING';
+export type QuoteImportIssueCode = 'FILE_MISSING'|'FILE_EMPTY'|'FILE_TOO_LARGE'|'EXTENSION_INVALID'|'MIME_INVALID'|'ENCODING_INVALID'|'ROW_LIMIT_EXCEEDED'|'HEADER_MISSING'|'DUPLICATE_HEADER'|'INCONSISTENT_CONTENT'|'DANGEROUS_FORMULA'|'REQUIRED_FIELD_MISSING'|'AMBIGUOUS_MAPPING'|'DUPLICATE_MAPPING'|'INVALID_NUMBER'|'INVALID_DATE'|'EMPTY_LINE_LABEL'|'DUPLICATE_IMPORT';
+export type OperationCategory = 'LABOR'|'BODYWORK'|'PAINT'|'MECHANICAL'|'ELECTRICAL'|'DIAGNOSTIC'|'MATERIAL'|'OTHER';
+export type WorkshopStage = 'DIAGNOSTIC'|'DISASSEMBLY'|'BODY_REPAIR'|'PREPARATION'|'PRIMER'|'PAINT_APPLICATION'|'VARNISH'|'DRYING'|'MECHANICAL_REPAIR'|'ELECTRICAL_REPAIR'|'REASSEMBLY'|'ADJUSTMENT'|'QUALITY_CONTROL'|'ROAD_TEST'|'CLEANING'|'DELIVERY_PREPARATION'|'UNSPECIFIED';
+export type DuplicateKind = 'EXACT_FILE_DUPLICATE'|'BUSINESS_DUPLICATE'|'POSSIBLE_DUPLICATE'|'UNIQUE';
+
+export type QuoteSourceFile = { name: string; size: number; type: string; lastModified: number; bytes: Uint8Array };
+export type QuoteFileMetadata = { name: string; size: number; extension: string; mimeType: string; encoding: 'UTF-8'|'UNKNOWN'; format: QuoteFormat };
+export type QuoteFileHash = { algorithm: 'SHA-256'; value: string };
+export type QuoteFileValidationResult = { valid: boolean; metadata?: QuoteFileMetadata; issues: QuoteImportIssue[] };
+export type QuoteRawCell = { sourceValue: string; columnIndex: number; sourceColumn: string };
+export type QuoteRawRow = { sourceRowNumber: number; cells: QuoteRawCell[]; issues: QuoteImportIssue[] };
+export type QuoteRawSheet = { headers: string[]; rows: QuoteRawRow[]; delimiter: QuoteDelimiter; issues: QuoteImportIssue[] };
+export type QuoteColumnDefinition = { key: string; required: boolean; synonyms: string[] };
+export type QuoteColumnMapping = { target: string; sourceColumn?: string; confidence: number; reason?: string; ignored?: boolean; ambiguous?: boolean };
+export type QuoteMappingTemplate = { name: string; mappings: QuoteColumnMapping[] };
+export type QuoteMappingSuggestion = QuoteColumnMapping & { ambiguous: boolean };
+export type QuoteImportIssue = { code: QuoteImportIssueCode; severity: QuoteImportIssueSeverity; message: string; sourceRowNumber?: number; sourceColumn?: string; sourceValue?: string };
+export type QuoteImportSummary = { totalRows: number; validRows: number; rejectedRows: number; blockingIssues: number; warningCount: number; totalAmount: number; currency: string };
+export type NormalizedQuoteLine = { sourceRowNumber: number; sourceLabel: string; normalizedLabel: string; externalReference?: string; operationCode?: string; operationCategory: OperationCategory; quantity: number; unit: string; unitPrice: number; totalPrice: number; laborHours?: number; stage: WorkshopStage; specialty?: string; requiresQualityControl: boolean; planningDurationMinutes: number; notes?: string; confidenceScore: number; validationStatus: 'VALID'|'WARNING'|'REJECTED'; sourceValues: Record<string, string>; normalizationWarnings: string[] };
+export type NormalizedQuote = { quoteReference: string; quoteDate?: string; customerDisplayName?: string; customerPhone?: string; customerEmail?: string; registrationNumber?: string; vin?: string; brand?: string; model?: string; mileage?: number; insurerName?: string; expertName?: string; claimReference?: string; coverageType?: string; currency: string; estimatedAmount: number; laborAmount: number; materialAmount: number; paintAmount: number; lines: NormalizedQuoteLine[] };
+export type RepairOrderLineDraft = { temporary_id: string; source_row_number: number; source_label: string; normalized_label: string; external_reference?: string; operation_code?: string; operation_category: OperationCategory; quantity: number; unit: string; unit_price: number; total_price: number; labor_hours?: number; stage: WorkshopStage; specialty?: string; requires_quality_control: boolean; planning_duration_minutes: number; notes?: string; confidence_score: number; validation_status: 'VALID'|'WARNING'|'REJECTED'; source_values: Record<string, string>; normalization_warnings: string[] };
+export type RepairOrderDraft = { temporary_id: string; lines: RepairOrderLineDraft[]; estimated_duration_minutes: number };
+export type DossierDraft = { temporary_id: string; source_file_name: string; source_file_hash: string; quote_reference: string; quote_date?: string; customer_display_name?: string; customer_phone?: string; customer_email?: string; registration_number?: string; vin?: string; brand?: string; model?: string; mileage?: number; insurer_name?: string; expert_name?: string; claim_reference?: string; coverage_type?: string; priority: 'LOW'|'NORMAL'|'HIGH'|'URGENT'; currency: string; estimated_amount: number; labor_amount: number; material_amount: number; paint_amount: number; notes: string[]; repair_order: RepairOrderDraft; import_fingerprint: string; validation_warnings: string[]; created_from_import_operation_id: string };
+export type QuoteImportApproval = { operationId: string; status: 'SERVER_CONFIRMATION_REQUIRED'; approvedAt: string; dossierDraft: DossierDraft; normalizedQuote: NormalizedQuote };
+export type QuoteDuplicateFingerprint = { fileHash: string; businessFingerprint: string };
+export type NormalizationResult<T> = { sourceValue: string; normalizedValue: T | undefined; success: boolean; warnings: string[]; errors: string[]; confidenceScore?: number };
+export type WorkshopStageSuggestion = { stage: WorkshopStage; confidenceScore: number; rule: string; detectedKeywords: string[]; warning?: string; manualCorrectionAllowed: true };
+export type OperationCategorySuggestion = { category: OperationCategory; confidenceScore: number; rule: string; detectedKeywords: string[]; warning?: string };
+
+export const MAPPING_FIELDS = ['quote_reference','quote_date','customer_display_name','customer_phone','customer_email','registration_number','vin','brand','model','mileage','insurer_name','expert_name','claim_reference','coverage_type','line_reference','line_label','operation_code','quantity','unit','unit_price','total_price','labor_hours','category','stage','notes'] as const;
+export type MappingField = typeof MAPPING_FIELDS[number];
