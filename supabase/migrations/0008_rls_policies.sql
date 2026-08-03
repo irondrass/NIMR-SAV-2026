@@ -162,7 +162,7 @@ create policy quote_source_files_read on storage.objects for select to authentic
 );
 create policy quote_source_files_insert on storage.objects for insert to authenticated with check (
   bucket_id = 'quote-source-files' and public.storage_path_has_expected_shape(name)
-  and public.storage_path_organization_id(name) = (select s.organization_id from public.sites s where s.id = public.storage_path_site_id(name))
+  and public.storage_path_organization_id(name) = (select s.organization_id from public.sites s where s.id = public.storage_path_site_id(objects.name))
   and public.can_create_quote_import(public.storage_path_site_id(name))
   and exists (select 1 from public.quote_import_operations i where i.id = public.storage_path_import_operation_id(name) and i.organization_id = public.storage_path_organization_id(name) and i.site_id = public.storage_path_site_id(name) and i.source_file_name = pg_catalog.split_part(name, '/', 4) and (public.is_admin_technique() or public.is_directeur_sav() or i.created_by = auth.uid()))
 );
