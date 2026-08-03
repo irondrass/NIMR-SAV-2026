@@ -1,13 +1,13 @@
 # Spécification de l’import de devis
 
-## Phase 1
+## Phase 2 actuelle
 
-La fondation prépare une zone de dépôt, les étapes de prévisualisation, mapping et validation, les états de chargement/erreur et l’historique. Aucun parseur Excel, CSV ou PDF et aucune création locale ne sont implémentés.
+Le CSV UTF-8 est réellement supporté : virgule ou point-virgule, BOM, guillemets échappés, retours à la ligne internes, nombres français et dates françaises/ISO. XLSX, PDF structuré et export ERP restent documentés uniquement.
 
 ## Contrat cible
 
 Formats futurs : Excel, CSV et PDF. Le fichier source sera conservé dans Supabase Storage. Une empreinte SHA-256, le nom, la taille et un identifiant d’opération `operation_id` permettront de détecter les doublons et de rendre l’import idempotent.
 
-Statuts : `UPLOADED`, `PARSING`, `READY_FOR_REVIEW`, `VALIDATION_ERROR`, `APPROVED`, `IMPORTED`, `REJECTED`.
+Statuts : `FILE_SELECTED`, `HASHING`, `PARSING`, `MAPPING_REQUIRED`, `READY_FOR_REVIEW`, `VALIDATION_ERROR`, `APPROVED_LOCALLY`, `SERVER_CONFIRMATION_REQUIRED`, `REJECTED`.
 
-Le flux cible est : dépôt → parsing → prévisualisation → mapping → contrôles de données → liste d’erreurs → approbation explicite. Avant l’approbation, l’opération peut être rejetée ou annulée sans créer de dossier. Après validation, une RPC PostgreSQL crée atomiquement le dossier et ses lignes de réparation, avec rollback en cas d’échec, puis prépare les tâches et écrit l’audit. L’opération, l’empreinte, le fichier source, le mapping, les erreurs et l’utilisateur sont traçables.
+Le flux est : fichier → contrôle → hash → lecture CSV → détection du format → mapping → normalisation → validation → prévisualisation → approbation locale → brouillon de dossier → confirmation serveur requise. Avant l’approbation, l’opération peut être rejetée ou annulée sans créer de dossier. Aucune RPC, migration ou persistance n’est implémentée dans cette phase.
