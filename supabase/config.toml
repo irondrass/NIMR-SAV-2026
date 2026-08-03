@@ -1,0 +1,19 @@
+project_id = "nimr-sav-pro-v2-local"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+
+[storage]
+enabled = true
+
