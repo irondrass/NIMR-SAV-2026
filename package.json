@@ -10,7 +10,8 @@
     "build": "tsc -b && vite build",
     "test:e2e": "playwright test",
     "test:production-auth": "node scripts/test-production-auth.mjs",
-    "check:no-secrets": "node scripts/check-no-secrets.mjs"
+    "check:no-secrets": "node scripts/check-no-secrets.mjs",
+    "check:supabase-foundation": "node scripts/check-supabase-foundation.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

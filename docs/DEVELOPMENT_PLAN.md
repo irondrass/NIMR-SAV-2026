@@ -15,3 +15,8 @@ Implémenter l’import de devis, dossiers, ordres de réparation, tâches, plan
 ## Phase 4 — qualité et pilotage
 
 Ajouter qualité, livraison, garantie, réclamations, satisfaction, KPI, audit, exports et tests E2E sur les scénarios opérationnels.
+# Phase 3A — fondation locale
+
+La branche `feature/supabase-foundation` prépare les migrations, RLS, Storage,
+audit et l’authentification réelle. La création des dossiers SAV et toute
+connexion distante sont explicitement reportées à une revue ultérieure.
