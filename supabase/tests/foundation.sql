@@ -1,6 +1,7 @@
 -- pgTAP contract for local Supabase. Run only with `supabase test db`.
 -- All fixtures must remain inside this transaction and are rolled back.
 begin;
+set local search_path = extensions, public, storage, pg_catalog;
 select plan(67);
 
 -- STRUCTURE (1-8)

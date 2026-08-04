@@ -15,3 +15,6 @@ blob-report/
 Thumbs.db
 .idea/
 .vscode/
+
+supabase/.temp/
+supabase/.branches/

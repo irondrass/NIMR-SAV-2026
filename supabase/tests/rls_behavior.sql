@@ -1,6 +1,7 @@
 -- Behavioral RLS contract for local Supabase. Run only with `supabase test db`.
 -- Every fixture and every mutation is contained in this transaction.
 begin;
+set local search_path = extensions, public, auth, storage, pg_catalog;
 select plan(67);
 
 -- Synthetic identities, organisations and sites. These values are local-only.
