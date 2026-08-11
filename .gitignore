@@ -18,3 +18,16 @@ Thumbs.db
 
 supabase/.temp/
 supabase/.branches/
+
+# Codex local configuration
+.codex/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Ruflo / Claude Flow runtime state
+.claude-flow/
+.swarm/
+ruvector.db
