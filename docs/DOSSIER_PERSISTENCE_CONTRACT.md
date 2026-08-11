@@ -1,19 +1,19 @@
 # Contrat de persistance des dossiers
 
-> Conception validée après seconde revue. Aucun SQL n’est implémenté par ce document.
+> Contrat opérationnel mis à jour par le Product Owner : le dossier sert exclusivement à planifier les travaux atelier. Aucun montant, prix, devise ou concept financier n’est persistant.
 
 ## Principes validés
 
 - Une opération d’import peut produire plusieurs dossiers ; chaque ligne éligible produit au maximum un dossier.
 - `quote_import_row_id` est la clé principale d’idempotence. `quote_import_operation_id` est conservé pour l’intégrité référentielle et l’audit.
-- La création est effectuée uniquement par une future fonction serveur, pour `IMPORT_DEVIS`, `DIRECTEUR_SAV` ou `ADMIN_TECHNIQUE`. Aucun `INSERT` direct n’est accordé à `authenticated`.
+- La création est effectuée uniquement par la fonction serveur `create_dossier_from_validated_quote`, pour `IMPORT_DEVIS`, `DIRECTEUR_SAV` ou `ADMIN_TECHNIQUE`. Aucun `INSERT` direct n’est accordé à `authenticated`.
 - Une ligne `WARNING` est admise seulement si aucune erreur bloquante ne subsiste, si l’opération est `APPROVED`, et si les avertissements ont été explicitement acceptés côté serveur. Les avertissements sont conservés dans le snapshot et l’audit.
 - `ADMIN_TECHNIQUE` est l’exception technique globale inter-organisations ; toute action sensible est auditée.
 - Aucun accès dossier spécifique au technicien n’est créé en 0009. L’affectation atelier et les accès associés sont futurs.
 
 ## Modèle minimal proposé
 
-Le type PostgreSQL `dossier_status` contient `CREATED`, `PLANNED`, `IN_PROGRESS`, `ON_HOLD`, `QUALITY_PENDING`, `QUALITY_REJECTED`, `QUALITY_APPROVED`, `CLOSED`, `CANCELLED`. Le type et la table sont proposés pour une future migration de fondation 0009 ; ils ne sont pas encore présents.
+Le type PostgreSQL `dossier_status` contient `CREATED`, `PLANNED`, `IN_PROGRESS`, `ON_HOLD`, `QUALITY_PENDING`, `QUALITY_REJECTED`, `QUALITY_APPROVED`, `CLOSED`, `CANCELLED`. Le type et les tables sont créés par la migration `0010_dossier_persistence.sql`.
 
 | Nom | Type PostgreSQL recommandé | Nullable | Source | Valeur initiale | Mutable / rôles | Sensible | Index | Contraintes | Justification |
 |---|---|---|---|---|---|---|---|---|---|
@@ -28,8 +28,6 @@ Le type PostgreSQL `dossier_status` contient `CREATED`, `PLANNED`, `IN_PROGRESS`
 | `source_snapshot` | `jsonb` objet | Non | devis normalisé validé | snapshot serveur | Immuable / aucun rôle | Oui, données personnelles minimales | Aucun par défaut | objet JSONB, clés explicitement autorisées, aucun secret, aucun email/téléphone/adresse/identité | Preuve de la source sans dépendance au frontend |
 | `repair_order_snapshot` | `jsonb` objet | Non | brouillon validé | snapshot serveur | Immuable en 0009 | Données métier | aucun par défaut | objet | Préserver les lignes importées sans modèle atelier prématuré |
 | `priority` | `text` | Non | règles/import | `NORMAL` | Selon transitions futures | Non | `(site_id,priority)` si besoin | `LOW/NORMAL/HIGH/URGENT` | Pilotage |
-| `currency` | `text` | Non | devis | valeur du devis | Immuable avec snapshot | Non | aucun | code devise valide | Montants interprétables |
-| `estimated_amount` | `numeric(14,2)` | Oui | devis | montant normalisé | Immuable en 0009 | Non | aucun | non négatif | Référence économique |
 | `created_by` | `uuid` | Non | `auth.uid()` → profil | acteur serveur | Immuable / aucun rôle | Non | index | FK profil actif | Traçabilité |
 | `created_at` | `timestamptz` | Non | serveur | `now()` | Immuable | Non | index | serveur uniquement | Horodatage fiable |
 | `updated_by` | `uuid` | Non | acteur serveur | `created_by` | Serveur / rôles autorisés | Non | index | FK profil | Dernier acteur |
@@ -42,7 +40,7 @@ Le numéro est généré exclusivement par PostgreSQL sous la forme `DOS-YYYY-00
 
 ### `dossier_number_counters`
 
-Table technique proposée :
+Table technique implémentée par `0010_dossier_persistence.sql` :
 
 | Nom | Type PostgreSQL recommandé | Nullable | Contraintes |
 |---|---|---|---|
@@ -51,11 +49,11 @@ Table technique proposée :
 | `last_value` | `bigint` | Non | `CHECK (last_value >= 0)` |
 | `updated_at` | `timestamptz` | Non | valeur serveur |
 
-Le compteur est réservé transactionnellement par la fonction de création avec `INSERT ... ON CONFLICT ... DO UPDATE`. Aucun accès direct `authenticated`, aucune policy d’écriture frontend et aucune manipulation hors de la future fonction `SECURITY DEFINER` contrôlée.
+Le compteur est réservé transactionnellement par la fonction de création avec `INSERT ... ON CONFLICT ... DO UPDATE`. Aucun accès direct `authenticated`, aucune policy d’écriture frontend et aucune manipulation hors de la fonction `SECURITY DEFINER` contrôlée.
 
 Les snapshots client minimaux sont limités à `customer_display_name` et `customer_external_reference`. Aucune adresse, email, téléphone ou identité n’est conservée. Le snapshot véhicule peut contenir `vin`, `registration_number`, `make`, `model`, `variant`, `mileage_km` et `powertrain` uniquement si fourni par le devis.
 
-La paire source doit appartenir au même site et à la même organisation ; la source doit être `APPROVED`. La future fonction conceptuelle est `create_dossier_from_validated_quote(p_quote_import_row_id uuid, p_accept_warnings boolean default false)`. Elle réinterroge la validation serveur. Si la ligne contient des `WARNING`, `p_accept_warnings` doit être `true` et l’acteur doit être `IMPORT_DEVIS`, `DIRECTEUR_SAV` ou `ADMIN_TECHNIQUE`. La transaction vérifie les warnings acceptés, applique la contrainte unique sur `quote_import_row_id`, écrit le dossier et l’audit ensemble. Une course concurrente retourne le dossier existant sans doublon.
+La paire source doit appartenir au même site et à la même organisation ; la source doit être `APPROVED`. La fonction implémentée est `create_dossier_from_validated_quote(p_quote_import_row_id uuid, p_accept_warnings boolean default false)`. Elle réinterroge la validation serveur et projette uniquement les données opérationnelles du devis. Si la ligne contient des `WARNING`, `p_accept_warnings` doit être `true` et l’acteur doit être `IMPORT_DEVIS`, `DIRECTEUR_SAV` ou `ADMIN_TECHNIQUE`. La transaction vérifie les warnings acceptés, applique la contrainte unique sur `quote_import_row_id`, écrit le dossier, l’OR, la ligne et l’audit ensemble. Une course concurrente retourne le dossier existant sans doublon.
 
 L’audit de création conserve uniquement `warnings_accepted`, `warning_count` et des `warning_codes` non sensibles. Il ne contient ni snapshot complet ni donnée personnelle. Un warning non accepté, une validation serveur invalide ou un rôle non autorisé provoque un rejet sans mutation et sans audit métier de succès.
 
@@ -65,8 +63,12 @@ L’audit de création conserve uniquement `warnings_accepted`, `warning_count` 
 
 Chaque mutation reçoit `expected_version`. La mise à jour atomique exige l’état et la version attendus, puis incrémente `version`. Le conflit est refusé, jamais fusionné silencieusement. `held_from_status` est renseigné par le serveur à l’entrée dans `ON_HOLD`, limité aux trois états autorisés, puis remis à `NULL` lors de la reprise ; le frontend ne peut pas le modifier directement. Une reprise `ON_HOLD` est autorisée uniquement vers la valeur exacte de `held_from_status` : `CREATED`, `PLANNED` ou `IN_PROGRESS`.
 
-Les futures fonctions `SECURITY DEFINER` utiliseront `search_path = ''`, qualifieront tous les objets avec leur schéma, dériveront l’acteur depuis `auth.uid()`, réinterrogeront les tables d’import et vérifieront profil actif, rôle et accès. Elles ne feront jamais confiance à `organization_id`, `site_id`, `created_by`, `dossier_number` ou au snapshot fourni par le frontend ; ces valeurs seront dérivées ou validées côté serveur. L’audit sera écrit dans la même transaction.
+La fonction `SECURITY DEFINER` utilise `search_path = ''`, qualifie tous les objets avec leur schéma, dérive l’acteur depuis `auth.uid()`, réinterroge les tables d’import et vérifie profil actif, rôle et accès. Elle ne fait jamais confiance à `organization_id`, `site_id`, `created_by`, `dossier_number` ou au snapshot fourni par le frontend ; ces valeurs sont dérivées ou validées côté serveur. L’audit est écrit dans la même transaction.
 
-## Hors périmètre 0009
+## Statut d’implémentation
+
+`0009_quote_import_server_contract.sql` et `0010_dossier_persistence.sql` sont implémentées. Les données commerciales, la réception, les pièces de rechange et la planification détaillée restent hors périmètre.
+
+## Hors périmètre 0010
 
 Pas d’affectation technicien, pas de SELECT spécifique à une affectation, pas de CREATE/UPDATE pour `TECHNICIEN`, pas de réouverture, pas de clients/véhicules référentiels, tâches atelier détaillées, pièces, rendez-vous, facturation ou déploiement.

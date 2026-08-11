@@ -1,8 +1,8 @@
 # Payload validé d’une ligne d’import
 
-> Projection proposée, non implémentée. Les champs ci-dessous sont dérivés des types et normalisations existants ; leur persistance stricte reste à approuver.
+> Contrat opérationnel implémenté. Les données commerciales du devis sont volontairement exclues.
 
-## Table un-à-un proposée
+## Table versionnée implémentée
 
 Future `quote_import_row_validated_payloads`, une ligne par version validée :
 
@@ -24,9 +24,7 @@ Future `quote_import_row_validated_payloads`, une ligne par version validée :
 | `normalized_label` | `text` | Non | `NormalizedQuoteLine.normalizedLabel` | non vide | Non | ordre réparation | index rare |
 | `operation_category` | `text` | Non | `operationCategory` | enum métier fermé | Non | ordre réparation | check |
 | `quantity` | `numeric` | Non | `quantity` | > 0 | Non | ordre réparation | check |
-| `unit_price` | `numeric(14,2)` | Oui | `unitPrice` | >= 0 si fourni | Non | ordre réparation | aucun |
-| `total_price` | `numeric(14,2)` | Oui | `totalPrice` | >= 0 si fourni | Non | ordre réparation | aucun |
-| `labor_hours` | `numeric(8,2)` | Oui | `laborHours` | >= 0 si fourni | Non | ordre réparation | aucun |
+| `planned_duration_minutes` | `integer` | Non | `planningDurationMinutes` | > 0, borné | Non | ordre réparation | check |
 | `source_row_number` | `integer` | Non | ligne source | FK/valeur positive | Non | traçabilité | index |
 | `source_reference` | `text` | Oui | `externalReference`/`operationCode` | longueur bornée | Non | ordre réparation | aucun |
 | `validated_at` | `timestamptz` | Non | serveur | UTC serveur | Non | audit/version | index |
@@ -37,8 +35,8 @@ Le payload de ligne de réparation doit être une table enfant structurée si pl
 
 `source_snapshot` est construit uniquement depuis les colonnes validées. Client autorisé : `customer_display_name`, `customer_external_reference`. Véhicule autorisé : `vin`, `registration_number`, `make`, `model`, `variant`, `mileage_km`, et `powertrain` seulement lorsqu’il est fourni et validé.
 
-`repair_order_snapshot` est une projection déterministe des lignes validées, avec au minimum `normalized_label`, `operation_category`, `quantity`, prix ou montant disponible, durée disponible, `source_row_number` et `source_reference`. Chaque champ absent reste NULL ou empêche l’éligibilité selon le catalogue de validation ; aucune valeur frontend n’est substituée silencieusement.
+`repair_order_snapshot` est une projection déterministe des lignes validées, avec au minimum `normalized_label`, `operation_category`, `quantity`, unité, durée prévue, `source_row_number` et `source_reference`. Chaque champ absent reste NULL ou empêche l’éligibilité selon le catalogue de validation ; aucune valeur frontend n’est substituée silencieusement.
 
 ## Version, hash et approbation
 
-Le serveur canonise les champs dans un ordre déterministe, calcule `payload_hash`, écrit le payload et les issues dans une transaction, puis expose la version. L’opération ne peut devenir `APPROVED` que si toutes les lignes requises ont une preuve conforme. La fonction dossier 0010 vérifie l’association ligne/opération, `APPROVED`, version et hash.
+Le serveur canonise les champs dans un ordre déterministe, calcule `payload_hash`, écrit le payload et les issues dans une transaction, puis expose la version. L’opération ne peut devenir `APPROVED` que si toutes les lignes requises ont une preuve conforme. La fonction dossier 0010 vérifie l’association ligne/opération, `APPROVED`, version et hash. Aucun montant, prix, devise ou donnée financière n’est accepté dans le payload.

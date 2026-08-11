@@ -58,13 +58,26 @@ values
   ('20000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000101', 'op-a', 'UPLOADED', 'devis-a.csv', 10, 'text/csv', repeat('a', 64), 'CSV', '10000000-0000-4000-8000-000000000005', null, null, null),
   ('20000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000201', 'op-b', 'UPLOADED', 'devis-b.csv', 10, 'text/csv', repeat('b', 64), 'CSV', '10000000-0000-4000-8000-000000000006', null, null, null),
   ('20000000-0000-4000-8000-000000000003', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000102', 'op-a2', 'UPLOADED', 'devis-a2.csv', 10, 'text/csv', repeat('c', 64), 'CSV', '10000000-0000-4000-8000-000000000007', null, null, null),
-  ('20000000-0000-4000-8000-000000000004', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000101', 'op-approved', 'APPROVED', 'approved.csv', 10, 'text/csv', repeat('d', 64), 'CSV', '10000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000007', timezone('utc', now()), null),
+  ('20000000-0000-4000-8000-000000000004', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000101', 'op-approved', 'READY_FOR_REVIEW', 'approved.csv', 10, 'text/csv', repeat('d', 64), 'CSV', '10000000-0000-4000-8000-000000000005', null, null, null),
   ('20000000-0000-4000-8000-000000000005', '00000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000101', 'op-rejected', 'REJECTED', 'rejected.csv', 10, 'text/csv', repeat('e', 64), 'CSV', '10000000-0000-4000-8000-000000000005', null, null, timezone('utc', now()));
 
 insert into public.quote_import_rows (id, import_operation_id, source_row_number, source_values, validation_status)
 values
   ('30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 1, '{"sku":"A"}', 'VALID'),
-  ('30000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', 1, '{"sku":"B"}', 'VALID');
+  ('30000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', 1, '{"sku":"B"}', 'VALID'),
+  ('30000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000004', 1, '{"designation":"Diagnostic moteur"}', 'UNREVIEWED');
+
+-- The approved fixture must first obtain the server-side operational proof.
+select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000005', true);
+select count(*) from public.validate_quote_import_row(
+  '30000000-0000-4000-8000-000000000003'::uuid,
+  '{"normalized_label":"Diagnostic moteur","operation_category":"DIAGNOSTIC","quantity":1,"unit":"job","planned_duration_minutes":60,"source_row_number":1,"source_reference":"DIAG-1"}'::jsonb,
+  '[]'::jsonb
+);
+select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000007', true);
+update public.quote_import_operations
+set status = 'APPROVED', approved_by = auth.uid(), approved_at = timezone('utc', now())
+where id = '20000000-0000-4000-8000-000000000004';
 
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000005', true);
 insert into public.attachments

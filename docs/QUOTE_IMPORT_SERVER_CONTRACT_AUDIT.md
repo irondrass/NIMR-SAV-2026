@@ -2,7 +2,7 @@
 
 ## Résultat
 
-La persistance dossier est reportée de la migration 0009 à la migration 0010. La migration 0009 future sera `0009_quote_import_server_contract.sql` et reste non créée. Ce document décrit uniquement la preuve serveur nécessaire.
+La preuve serveur est implémentée dans `0009_quote_import_server_contract.sql` et la persistance dossier/OR dans `0010_dossier_persistence.sql`. Ce document conserve les décisions d’audit et leur statut d’implémentation.
 
 ## Faits vérifiés
 
@@ -17,9 +17,9 @@ La persistance dossier est reportée de la migration 0009 à la migration 0010. 
 | mapping/drafts/normalisation | Frontend | Non | pas une preuve persistée |
 | empreinte métier | `business_fingerprint` | format nullable | déduplication, pas validation |
 
-## Architecture retenue
+## Architecture implémentée
 
-L’option D est recommandée : table un-à-un de payload validé plus table relationnelle d’issues. Elle donne un typage PostgreSQL, une immutabilité simple, des RLS séparées, un hash/version auditable et une compatibilité avec les lignes historiques sans les déclarer valides par défaut.
+L’option D est implémentée : table versionnée de payload validé plus table relationnelle d’issues. Elle donne un typage PostgreSQL, une immutabilité simple, des RLS séparées, un hash/version auditable et une compatibilité avec les lignes historiques sans les déclarer valides par défaut.
 
 Les lignes existantes ne sont pas backfillées automatiquement. Elles restent à revalider et ne peuvent pas alimenter 0010 tant que leur payload/issue n’est pas établi par le serveur.
 
@@ -36,13 +36,13 @@ Les lignes existantes ne sont pas backfillées automatiquement. Elles restent à
 
 Les événements n’incluent jamais nom client, VIN, immatriculation, `source_values`, `normalized_values` complets, messages libres ou snapshots. L’audit reste append-only via `append_audit_event`.
 
-## Sécurité et RLS futures
+## Sécurité et RLS implémentées
 
 Les fonctions de validation utilisent `SECURITY DEFINER`, `search_path = ''`, objets qualifiés, `auth.uid()` et profil actif. `ADMIN_TECHNIQUE` est global ; `IMPORT_DEVIS` et `DIRECTEUR_SAV` sont limités au périmètre organisation/site. Les autres rôles peuvent lire selon besoin métier, mais aucune écriture directe authenticated n’est accordée sur payloads/issues. `anon` est refusé, DELETE applicatif interdit et aucune élévation n’est possible.
 
 ## Impact précis sur la conception dossier
 
-La future 0010 devra :
+La 0010 implémente :
 
 - utiliser `quote_import_row_id` comme clé d’idempotence ;
 - vérifier opération `APPROVED`, payload immuable, version et `payload_hash` ;
@@ -70,9 +70,9 @@ DESIGN_DOCUMENTS=CREATED
 MIGRATIONS=UNCHANGED_0001_0008
 DATABASE_LOCAL=NOT_MODIFIED
 DATABASE_REMOTE=NOT_MODIFIED
-SOURCE_CONTRACT=PROPOSED_NOT_IMPLEMENTED
-ISSUES_CONTRACT=PROPOSED_NOT_IMPLEMENTED
-VALIDATED_PAYLOAD=PROPOSED_NOT_IMPLEMENTED
+SOURCE_CONTRACT=IMPLEMENTED_0009
+ISSUES_CONTRACT=IMPLEMENTED_0009
+VALIDATED_PAYLOAD=IMPLEMENTED_0009
 DOSSIER_MIGRATION_RENUMBERED_TO_0010
 GO_SOURCE_CONTRACT_SQL=NO
 GO_DESIGN_REVIEW=YES

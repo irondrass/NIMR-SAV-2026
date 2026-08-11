@@ -8,11 +8,13 @@ const expected = [
   '0003_profiles_and_roles.sql', '0004_profile_site_access.sql',
   '0005_quote_import_foundation.sql', '0006_storage_and_attachments.sql',
   '0007_audit_foundation.sql', '0008_rls_policies.sql',
+  '0009_quote_import_server_contract.sql', '0010_dossier_persistence.sql',
 ];
-const forbidden = /create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?(clients|vehicles|reception|appointments|parts|pdr|dossiers|repair_orders|repair_order_lines|workshop_tasks|bookings|quality_controls|deliveries)\b/i;
+const forbidden = /create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?(clients|vehicles|reception|appointments|parts|pdr|workshop_tasks|bookings|quality_controls|deliveries|invoices|payments|billing)\b/i;
 const migrationText = (await Promise.all(expected.map((file) => readFile(join(migrationsDir, file), 'utf8')))).join('\n');
 const foundationText = await readFile(join(root, 'supabase', 'tests', 'foundation.sql'), 'utf8');
 const behaviorText = await readFile(join(root, 'supabase', 'tests', 'rls_behavior.sql'), 'utf8');
+const dossierText = await readFile(join(root, 'supabase', 'tests', 'dossier_persistence.sql'), 'utf8');
 const foundationPgtapSearchPath = 'set local search_path = extensions, public, storage, pg_catalog;';
 const behaviorPgtapSearchPath = 'set local search_path = extensions, public, auth, storage, pg_catalog;';
 const rlsBlock = migrationText.match(/foreach\s+t\s+in\s+array[\s\S]*?enable\s+row\s+level\s+security[\s\S]*?end\s+\$\$/i)?.[0] ?? '';
@@ -21,12 +23,13 @@ const check = (name, condition) => checks.push({ name, condition });
 
 check('migrations are complete and ordered', (await readdir(migrationsDir)).filter((file) => /^\d{4}_.*\.sql$/.test(file)).join('|') === expected.join('|'));
 check('forbidden tables absent', !forbidden.test(migrationText));
-check('RLS is declared for every application table', rlsBlock.includes('enable row level security') && ['organizations','sites','profiles','roles','profile_roles','profile_site_access','quote_import_operations','quote_import_rows','quote_mapping_templates','attachments','audit_events'].every((name) => rlsBlock.includes(`'${name}'`)));
+check('RLS is declared for every application table', rlsBlock.includes('enable row level security') && ['organizations','sites','profiles','roles','profile_roles','profile_site_access','quote_import_operations','quote_import_rows','quote_mapping_templates','attachments','audit_events','quote_import_issue_catalog','quote_import_row_validated_payloads','quote_import_row_issues','dossiers','repair_orders','repair_order_lines','dossier_number_counters'].every((name) => migrationText.includes(`alter table public.${name} enable row level security`) || rlsBlock.includes(`'${name}'`)));
 check('no authenticated DELETE grants', !/grant\s+[^;\n]*\bdelete\b[^;\n]*to\s+authenticated/i.test(migrationText));
 check('no Storage DELETE policy', !/create\s+policy\s+[^;\n]*\bon\s+storage\.objects\s+for\s+delete/i.test(migrationText));
 check('audit has no direct authenticated INSERT grant', !/grant\s+insert\s+on\s+public\.audit_events\s+to\s+authenticated/i.test(migrationText));
 check('immutability protections exist', ['guard_quote_import_operation_update', 'guard_quote_import_row_update', 'guard_attachment_update', 'prevent_audit_mutation'].every((name) => migrationText.includes(name)));
-check('behavioral pgTAP contract exists', foundationText.includes('select plan(67)') && foundationText.includes('can_create_quote_import'));
+check('behavioral pgTAP contract exists', foundationText.includes('select plan(69)') && foundationText.includes('can_create_quote_import'));
+check('dossier pgTAP contract exists', dossierText.includes('select plan(22)') && dossierText.includes('create_dossier_from_validated_quote'));
 check('foundation pgTAP search_path is explicit', foundationText.includes(foundationPgtapSearchPath));
 check('behavioral pgTAP search_path is explicit', behaviorText.includes(behaviorPgtapSearchPath));
 check('foundation pgTAP search_path appears once', (foundationText.match(/set local search_path\s*=\s*extensions, public, storage, pg_catalog;/gi) ?? []).length === 1);

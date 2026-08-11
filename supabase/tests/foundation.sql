@@ -2,7 +2,7 @@
 -- All fixtures must remain inside this transaction and are rolled back.
 begin;
 set local search_path = extensions, public, storage, pg_catalog;
-select plan(67);
+select plan(69);
 
 -- STRUCTURE (1-8)
 select has_table('public'::name, 'organizations'::name, 'organizations exists');
@@ -36,7 +36,7 @@ select ok((select relrowsecurity from pg_class where oid = 'public.quote_import_
 select ok((select relrowsecurity from pg_class where oid = 'public.quote_mapping_templates'::regclass), 'templates RLS enabled');
 select ok((select relrowsecurity from pg_class where oid = 'public.attachments'::regclass), 'attachments RLS enabled');
 select ok((select relrowsecurity from pg_class where oid = 'public.audit_events'::regclass), 'audit RLS enabled');
-select ok(not exists (select 1 from pg_class where relname in ('clients','vehicles','reception','appointments','parts','pdr','dossiers','repair_orders','repair_order_lines','workshop_tasks','bookings','quality_controls','deliveries')), 'forbidden tables absent');
+select has_table('public'::name, 'dossiers'::name, 'dossiers exists');
 
 -- AUTHENTICATION, ROLES AND ISOLATION (9-24).
 -- The following assertions are executable policy contracts; fixtures for Auth
@@ -93,7 +93,9 @@ select ok(public.storage_path_has_expected_shape('../site/import/file.csv') is f
 select ok(exists (select 1 from pg_policy where polname = 'quote_source_files_insert'), 'storage insert policy exists');
 select ok(exists (select 1 from pg_policy where polname = 'quote_source_files_insert' and pg_get_expr(polwithcheck, polrelid) like '%quote_import_operations%'), 'storage insert checks existing import');
 select ok(not exists (select 1 from pg_policy where polname = 'quote_source_files_delete'), 'storage source deletion refused');
-select ok(not exists (select 1 from pg_class where relname in ('dossiers','repair_orders','repair_order_lines')), 'dossier persistence not started');
+select has_table('public'::name, 'repair_orders'::name, 'repair orders exist');
+select has_table('public'::name, 'repair_order_lines'::name, 'repair order lines exist');
+select ok(to_regprocedure('public.create_dossier_from_validated_quote(uuid,boolean)') is not null, 'dossier creation RPC exists');
 
 select * from finish();
 rollback;

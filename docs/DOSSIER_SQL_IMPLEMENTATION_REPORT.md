@@ -1,11 +1,20 @@
-# Rapport de blocage — fondation SQL des dossiers
+# Rapport d’implémentation — fondation SQL des dossiers
 
 ## Verdict
 
-L’implémentation de la migration 0009 est arrêtée avant toute écriture SQL.
-Le schéma 0001–0008 ne permet pas de prouver côté PostgreSQL toutes les
-préconditions exigées par le contrat approuvé. Aucun objet SQL, test pgTAP,
-script statique, migration ou base locale/distante n’a été modifié.
+Le bloqueur SQL historique est résolu par les migrations 0009 et 0010.
+Le schéma 0001–0008 ne permettait pas de prouver côté PostgreSQL toutes les
+préconditions opérationnelles. La preuve serveur quote-import, la projection
+opérationnelle et la fondation dossier/OR sont maintenant implémentées. La
+base distante n’a pas été modifiée.
+
+## Mesures implémentées
+
+- `quote_import_row_validated_payloads` structure et versionne la preuve opérationnelle.
+- `quote_import_row_issues` dérive le blocage depuis un catalogue de sévérité fermé.
+- `validate_quote_import_row` calcule le hash serveur, contrôle l’identité de ligne et audite la validation.
+- `create_dossier_from_validated_quote` dérive l’acteur de `auth.uid()`, vérifie l’approbation, les avertissements, le périmètre et crée dossier/OR/ligne atomiquement.
+- Les colonnes commerciales (`currency`, `estimated_amount`, prix et montants) ne sont pas implémentées conformément à la décision Product Owner.
 
 ## Preuves disponibles
 
@@ -19,7 +28,7 @@ script statique, migration ou base locale/distante n’a été modifié.
 - `validation_status` est limité à `VALID`, `INVALID`, `WARNING` et
   `UNREVIEWED`.
 
-## Manques bloquants
+## Manques historiques résolus
 
 ### 1. Erreurs bloquantes
 
@@ -70,8 +79,9 @@ Cette action n’a pas été réalisée, conformément à la consigne de ne jama
 remplacer une preuve serveur manquante par un paramètre frontend.
 
 ```text
-MIGRATION_0009=NOT_CREATED_BLOCKED_BY_SOURCE_CONTRACT
+MIGRATION_0009=IMPLEMENTED_QUOTE_IMPORT_SERVER_CONTRACT
+MIGRATION_0010=IMPLEMENTED_DOSSIER_PERSISTENCE
 DATABASE_LOCAL=NOT_MODIFIED
 DATABASE_REMOTE=NOT_MODIFIED
-GO_SQL_IMPLEMENTATION=NO
+GO_SQL_IMPLEMENTATION=YES
 ```
